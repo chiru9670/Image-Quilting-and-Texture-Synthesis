@@ -1,4 +1,6 @@
 %% MainScript
+clear variables
+close all
 
 %% Setting the color scale
 my_num_of_colors = 256;

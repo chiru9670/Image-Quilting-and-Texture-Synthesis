@@ -1,4 +1,6 @@
 %% MainScript
+clear variables
+close all
 
 %% Setting the color scale
 my_num_of_colors = 256;
@@ -9,7 +11,7 @@ my_color_scale = [col_scale,col_scale,col_scale];
 to_save = 0;
 
 %% Loading the pictures
-tic;
+% tic;
 % For GIF pictures, need to convert from index to rgb
 texture_pic = imread('data/transfer/neworange.jpg');
 texture_pic = double(texture_pic)/255.0;
@@ -36,6 +38,18 @@ num_iter = 1;
 corr_type = 'intensity';
 
 %% Calculating the new generated image size 
+% hnew = net_patch_size*floor(h/net_patch_size) + overlap_size;
+% wnew = net_patch_size*floor(w/net_patch_size) + overlap_size;
+% 
+% target_pic = imresize(target_pic,[hnew wnew], 'bicubic');
+% 
+% modified_pic = zeros([hnew,wnew,num_chan]);
+% 
+% i_limit = (hnew-overlap_size)/net_patch_size;
+% j_limit = (wnew-overlap_size)/net_patch_size;
+
+tic;
+%% Calculating the new generated image size 
 hnew = net_patch_size*floor(h/net_patch_size) + overlap_size;
 wnew = net_patch_size*floor(w/net_patch_size) + overlap_size;
 
@@ -45,18 +59,6 @@ target_old_pic = target_pic;
 modified_pic = zeros([hnew,wnew,num_chan]);
 
 f = waitbar(0,"Transferring Texture");
-i_limit = (hnew-overlap_size)/net_patch_size;
-j_limit = (wnew-overlap_size)/net_patch_size;
-
-tic;
-%% Calculating the new generated image size 
-hnew = net_patch_size*floor(h/net_patch_size) + overlap_size;
-wnew = net_patch_size*floor(w/net_patch_size) + overlap_size;
-
-target_pic = imresize(target_pic,[hnew wnew], 'bicubic');
-
-modified_pic = zeros([hnew,wnew,num_chan]);
-
 stepnum = 0;
 i_limit = (hnew-overlap_size)/net_patch_size;
 j_limit = (wnew-overlap_size)/net_patch_size;
