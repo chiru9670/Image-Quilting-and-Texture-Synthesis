@@ -1,33 +1,34 @@
 %% Helper function to return the random first patch
-function selected_patch = getFirstTransferPatch(texture_pic,target_patch,patch_size,error_tolerance,corr_type);
-	[h,w,num_chan] = size(texture_pic);
-	num_rows = h-patch_size+1;
-	num_cols = w-patch_size+1;
-	error_patch = zeros([num_rows,num_cols]);
-	min_error = 10000000.0;
-	for i=1:h-patch_size+1
-		for j=1:w-patch_size+1
-			curr_patch = texture_pic(i:i+patch_size-1,j:j+patch_size-1,:);
-			correspondence_error = 	findCorrespondenceError(curr_patch,target_patch,corr_type);
-			total_error = correspondence_error;
-			if total_error == 0
-				error_patch(i,j) = 0;
+function selected_patch = getFirstTransferPatch(texture,target_patch,patch_dim,err_tol,corr_type)
+	[h,w,num_chan] = size(texture);
+	rows = h-patch_dim+1;
+	cols = w-patch_dim+1;
+	D = zeros([rows,cols]);
+	min_err = 10000000.0;
+	for i=1:h-patch_dim+1
+		for j=1:w-patch_dim+1
+			curr_patch = texture(i:i+patch_dim-1,j:j+patch_dim-1,:);
+			corresp_err = findCorrespondenceError(curr_patch,target_patch,corr_type);
+			total_err = corresp_err;
+			if total_err == 0
+				D(i,j) = 0;
 			else
-				error_patch(i,j) = total_error;
-				if total_error < min_error
-					min_error = total_error;
+				D(i,j) = total_err;
+				if total_err < min_err
+					min_err = total_err;
 				end
 			end			
 		end
 	end
 	
-	min_error = min_error*(1+error_tolerance);
+	min_err = min_err*(1+err_tol);
 
-	[close_patches_i, close_patches_j] = find(error_patch<=min_error);
-	x = randi(length(close_patches_i),1);
+	[res_patches_i, res_patches_j] = find(D<=min_err);
+	
+    x = randi(length(res_patches_i),1);
 
-	start_i = close_patches_i(x);
-	start_j = close_patches_j(x);
+	start_i = res_patches_i(x);
+	start_j = res_patches_j(x);
 
-	selected_patch = texture_pic(start_i:start_i+patch_size-1, start_j:start_j+patch_size-1, :);
+	selected_patch = texture(start_i:start_i+patch_dim-1, start_j:start_j+patch_dim-1, :);
 end

@@ -7,125 +7,129 @@ my_num_of_colors = 256;
 col_scale =  [0:1/(my_num_of_colors-1):1]';
 my_color_scale = [col_scale,col_scale,col_scale];
 
-%% Set to_save to 1, if you want to save the generated pictures
-to_save = 0;
 
-%% Loading the pictures
 
-%% For GIF pictures, need to convert from index to rgb
-input_name = 'cans_sc';    
-input_folder = 'paper/';
-output_name = strcat(input_name,'.jpg');
-input_file = strcat(input_name,'.gif');
+%% For GIF pictures, convert from index to rgb
+inp = 'cans_sc';    
+folder = 'paper/';
+op_n = strcat(inp,'.jpg');
+input_file = strcat(inp,'.gif');
 
-[texture_paper_pic,map] = imread(strcat('data/',input_folder,input_file));
-texture_paper_pic = ind2rgb(texture_paper_pic,map);
-original_pic = double(texture_paper_pic);
+[texture,map] = imread(strcat('data/',folder,input_file));
+texture = ind2rgb(texture,map);
+original_pic = double(texture);
 
 %% For JPEG pictures
 
-% input_name = 'green_plum';
-% input_folder = 'own/';
-% output_name = strcat(input_name,'.jpg');
-% input_file = strcat(input_name,'.jpg');
-% texture_our_pic = imread(strcat('data/',input_folder,input_file));
-% original_pic = double(texture_our_pic)/255.0;
-
+% inp = 'green_plum';
+% folder = 'own/';
+% op_n = strcat(inp,'.jpg');
+% input_file = strcat(inp,'.jpg');
+% textureP = imread(strcat('data/',folder,input_file));
+% original_pic = double(textureP)/255.0;
+% 
 [h,w,num_chan] = size(original_pic);
-file_name = "Result";
 
 
-%% Defining the parameters of our algorithm
-patch_size = 36;
-overlap_size = patch_size/6;
-net_patch_size = patch_size-overlap_size;
-error_tolerance = 0.1;
-title_name = ['Quilted Pic; (P: ', num2str(patch_size), ', err-tol: ', num2str(error_tolerance), ')'];
+%% Defining the params
+err_tol = 0.1;
+
+patch_dim = 36;
+overlap_size = patch_dim/6;
+net_patch_dim = patch_dim-overlap_size;
+
+title_name = ['Quilted Pic; (P: ', num2str(patch_dim), ', err-tol: ', num2str(err_tol), ')'];
+
+tic;
 %% Calculating the new generated image size 
-hnew = 2*net_patch_size*floor(h/net_patch_size) + overlap_size;
-wnew = 2*net_patch_size*floor(w/net_patch_size) + overlap_size;
-modified_pic = zeros([hnew,wnew,num_chan]);
-% size(original_pic)
-% size(modified_pic)
-f = waitbar(0,"Quilting");
-stepnum = 0;
-i_limit = (hnew-overlap_size)/net_patch_size;
-j_limit = (wnew-overlap_size)/net_patch_size;
+h_new = 2*net_patch_dim*floor(h/net_patch_dim) + overlap_size;
+w_new = 2*net_patch_dim*floor(w/net_patch_dim) + overlap_size;
+
+Quilt_pic = zeros([h_new,w_new,num_chan]);
+
+lim_x = (h_new-overlap_size)/net_patch_dim;
+lim_y = (w_new-overlap_size)/net_patch_dim;
 
 %% compute required fft
 Io_fft = fft2(padarray(original_pic,[h-1 w-1],'post'));
 Io_2 = sum(original_pic .^ 2, 3);
 
-for i = 1:i_limit
-	for j = 1:j_limit
+for i = 1:lim_x
+	for j = 1:lim_y
 
 		if i==1 && j==1
-			modified_pic(1:patch_size,1:patch_size,:) = getRandomPatch(original_pic,patch_size);
+			Quilt_pic(1:patch_dim,1:patch_dim,:) = getRandomPatch(original_pic,patch_dim);
 
 		elseif i==1
-			Q = ones(patch_size, overlap_size);
-            Q_ext = padarray(Q, [h-patch_size, w-overlap_size], 'post');
+			Q = ones(patch_dim, overlap_size);
+            Q_ext = padarray(Q, [h-patch_dim, w-overlap_size], 'post');
             Q_ext_corr = xcorr2(Q_ext, Io_2);
             Q_ext_corr=Q_ext_corr(end:-1:1,end:-1:1);
             Q_ext_corr = Q_ext_corr(h:end,w:end);
-            start_ind = net_patch_size + (j-2)*net_patch_size;
-			prev_patch = modified_pic(1:patch_size,start_ind - net_patch_size + 1:start_ind - net_patch_size + patch_size,:);
+            
+            start_ind = (j-1)*net_patch_dim;
+			prev_patch = Quilt_pic(1:patch_dim,start_ind - net_patch_dim + 1:start_ind - net_patch_dim + patch_dim,:);
 			
-			ref_patches = cell(1,3);
-			ref_patches{1} = prev_patch;
+			prevs_p = cell(1,3);
+			prevs_p{1} = prev_patch;
 			
-			selected_patch = findClosestPatch(ref_patches, original_pic, error_tolerance, 'vertical', overlap_size, patch_size, Io_fft, Q_ext_corr);
-			final_patch = minErrorBoundaryCut(ref_patches,selected_patch,overlap_size,'vertical',patch_size);
+			selected_patch = findClosestPatch(prevs_p, original_pic, err_tol, 'vertical', overlap_size, patch_dim, Io_fft, Q_ext_corr);
+			final_patch = minErrorBoundaryCut(prevs_p,selected_patch,overlap_size,'vertical',patch_dim);
 			
-			modified_pic(1:patch_size,start_ind+1:start_ind+patch_size,:) = final_patch;
+			Quilt_pic(1:patch_dim,start_ind+1:start_ind+patch_dim,:) = final_patch;
 
 		elseif j==1
-			Q = ones(overlap_size, patch_size);
-            Q_ext = padarray(Q, [h-overlap_size w-patch_size], 'post');
+			Q = ones(overlap_size, patch_dim);
+            Q_ext = padarray(Q, [h-overlap_size w-patch_dim], 'post');
             Q_ext_corr = xcorr2(Q_ext, Io_2);
             Q_ext_corr=Q_ext_corr(end:-1:1,end:-1:1);
             Q_ext_corr = Q_ext_corr(h:end, w:end);
-            start_ind = net_patch_size + (i-2)*net_patch_size;
-			prev_patch = modified_pic(start_ind - net_patch_size + 1:start_ind - net_patch_size + patch_size,1:patch_size,:);
+            
+            start_ind = (i-1)*net_patch_dim;
+			prev_patch = Quilt_pic(start_ind - net_patch_dim + 1:start_ind - net_patch_dim + patch_dim,1:patch_dim,:);
 			
-			ref_patches = cell(1,3);
-			ref_patches{2} = prev_patch;
+			prevs_p = cell(1,3);
+			prevs_p{2} = prev_patch;
 			
-			selected_patch = findClosestPatch(ref_patches, original_pic, error_tolerance, 'horizontal', overlap_size, patch_size, Io_fft, Q_ext_corr);
-			final_patch = minErrorBoundaryCut(ref_patches,selected_patch,overlap_size,'horizontal',patch_size);
+			selected_patch = findClosestPatch(prevs_p, original_pic, err_tol, 'horizontal', overlap_size, patch_dim, Io_fft, Q_ext_corr);
+			final_patch = minErrorBoundaryCut(prevs_p,selected_patch,overlap_size,'horizontal',patch_dim);
 			
-			modified_pic(start_ind+1:start_ind+patch_size,1:patch_size,:) = final_patch;
+			Quilt_pic(start_ind+1:start_ind+patch_dim,1:patch_dim,:) = final_patch;
 
         else
             Q_ext = zeros(h,w);
-            left_ind = net_patch_size + (j-2)*net_patch_size;
-			top_ind = net_patch_size + (i-2)*net_patch_size;
+            left_ind = (j-1)*net_patch_dim;
+			top_ind = (i-1)*net_patch_dim;
 			
-			left_patch = modified_pic(top_ind + 1 : top_ind + patch_size,left_ind - net_patch_size + 1:left_ind - net_patch_size + patch_size,:);
-			top_patch = modified_pic(top_ind - net_patch_size + 1:top_ind - net_patch_size + patch_size,left_ind + 1:left_ind + patch_size,:);
-			corner_patch = modified_pic(top_ind - net_patch_size + 1:top_ind - net_patch_size + patch_size,left_ind - net_patch_size + 1:left_ind - net_patch_size + patch_size,:);
+			left_patch = Quilt_pic(top_ind + 1 : top_ind + patch_dim,left_ind - net_patch_dim + 1:left_ind - net_patch_dim + patch_dim,:);
+			top_patch = Quilt_pic(top_ind - net_patch_dim + 1:top_ind - net_patch_dim + patch_dim,left_ind + 1:left_ind + patch_dim,:);
+			corner_patch = Quilt_pic(top_ind - net_patch_dim + 1:top_ind - net_patch_dim + patch_dim,left_ind - net_patch_dim + 1:left_ind - net_patch_dim + patch_dim,:);
 			
-            Q_ext(1:patch_size, 1:overlap_size) = ones(patch_size, overlap_size);
-            Q_ext(1:overlap_size, 1:patch_size) = ones(overlap_size,patch_size);
+            Q_ext(1:patch_dim, 1:overlap_size) = ones(patch_dim, overlap_size);
+            Q_ext(1:overlap_size, 1:patch_dim) = ones(overlap_size,patch_dim);
             Q_ext_corr = xcorr2(Q_ext, Io_2);
             Q_ext_corr=Q_ext_corr(end:-1:1,end:-1:1);
             Q_ext_corr = Q_ext_corr(h:end, w:end);
 			
-            ref_patches = cell(1,3);
-			ref_patches{1} = left_patch;
-			ref_patches{2} = top_patch;
-			ref_patches{3} = corner_patch;
+            prevs_p = cell(1,3);
+			prevs_p{1} = left_patch;
+			prevs_p{2} = top_patch;
+			prevs_p{3} = corner_patch;
 
-			selected_patch = findClosestPatch(ref_patches, original_pic, error_tolerance, 'both', overlap_size, patch_size, Io_fft, Q_ext_corr);
-			final_patch = minErrorBoundaryCut(ref_patches,selected_patch,overlap_size,'both',patch_size);
+			selected_patch = findClosestPatch(prevs_p, original_pic, err_tol, 'both', overlap_size, patch_dim, Io_fft, Q_ext_corr);
+			final_patch = minErrorBoundaryCut(prevs_p,selected_patch,overlap_size,'both',patch_dim);
 
-			modified_pic(top_ind+1:top_ind+patch_size,left_ind+1:left_ind+patch_size,:) = final_patch;
+			Quilt_pic(top_ind+1:top_ind+patch_dim,left_ind+1:left_ind+patch_dim,:) = final_patch;
 
 		end
-		stepnum = stepnum + 1;	
-		waitbar(stepnum/(i_limit*j_limit),f,"Quilting");
+			
+		
 	end
 end
-close(f);
-imwrite(modified_pic,strcat('results/quilting/', input_folder, int2str(patch_size), '/', output_name));
-saveFigure(my_color_scale,original_pic,modified_pic,title_name,file_name,1,to_save);
+toc;
+
+fig = figure; colormap(my_color_scale);
+colormap jet;
+subplot(1,2,1), imagesc(original_pic), title('Original Image'), colorbar, daspect([1 1 1]), axis tight;
+subplot(1,2,2), imagesc(Quilt_pic), title(title_name), colorbar, daspect([1 1 1]), axis tight;
+impixelinfo();
