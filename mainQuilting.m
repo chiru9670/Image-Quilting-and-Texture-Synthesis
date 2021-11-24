@@ -1,6 +1,6 @@
 %% MainScript
 clear variables
-close all
+% close all
 
 %% Setting the color scale
 my_num_of_colors = 256;
@@ -13,7 +13,7 @@ to_save = 0;
 %% Loading the pictures
 
 %% For GIF pictures, need to convert from index to rgb
-input_name = '3';    
+input_name = 'cans_sc';    
 input_folder = 'paper/';
 output_name = strcat(input_name,'.jpg');
 input_file = strcat(input_name,'.gif');
@@ -33,14 +33,14 @@ original_pic = double(texture_paper_pic);
 
 [h,w,num_chan] = size(original_pic);
 file_name = "Result";
-title_name = "Modified Pic";
+
 
 %% Defining the parameters of our algorithm
-patch_size = 60;
+patch_size = 36;
 overlap_size = patch_size/6;
 net_patch_size = patch_size-overlap_size;
 error_tolerance = 0.1;
-
+title_name = ['Quilted Pic; (P: ', num2str(patch_size), ', err-tol: ', num2str(error_tolerance), ')'];
 %% Calculating the new generated image size 
 hnew = 2*net_patch_size*floor(h/net_patch_size) + overlap_size;
 wnew = 2*net_patch_size*floor(w/net_patch_size) + overlap_size;
