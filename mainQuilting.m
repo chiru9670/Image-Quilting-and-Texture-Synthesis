@@ -13,7 +13,7 @@ to_save = 0;
 %% Loading the pictures
 
 %% For GIF pictures, need to convert from index to rgb
-input_name = '11';    
+input_name = '3';    
 input_folder = 'paper/';
 output_name = strcat(input_name,'.jpg');
 input_file = strcat(input_name,'.gif');
@@ -52,6 +52,10 @@ stepnum = 0;
 i_limit = (hnew-overlap_size)/net_patch_size;
 j_limit = (wnew-overlap_size)/net_patch_size;
 
+%% compute required fft
+Io_fft = fft2(padarray(original_pic,[h-1 w-1],'post'));
+Io_2 = sum(original_pic .^ 2, 3);
+
 for i = 1:i_limit
 	for j = 1:j_limit
 
@@ -59,43 +63,60 @@ for i = 1:i_limit
 			modified_pic(1:patch_size,1:patch_size,:) = getRandomPatch(original_pic,patch_size);
 
 		elseif i==1
-			start_ind = net_patch_size + (j-2)*net_patch_size;
+			Q = ones(patch_size, overlap_size);
+            Q_ext = padarray(Q, [h-patch_size, w-overlap_size], 'post');
+            Q_ext_corr = xcorr2(Q_ext, Io_2);
+            Q_ext_corr=Q_ext_corr(end:-1:1,end:-1:1);
+            Q_ext_corr = Q_ext_corr(h:end,w:end);
+            start_ind = net_patch_size + (j-2)*net_patch_size;
 			prev_patch = modified_pic(1:patch_size,start_ind - net_patch_size + 1:start_ind - net_patch_size + patch_size,:);
 			
 			ref_patches = cell(1,3);
 			ref_patches{1} = prev_patch;
 			
-			selected_patch = findClosestPatch(ref_patches, original_pic, error_tolerance, 'vertical', overlap_size, patch_size);
+			selected_patch = findClosestPatch(ref_patches, original_pic, error_tolerance, 'vertical', overlap_size, patch_size, Io_fft, Q_ext_corr);
 			final_patch = minErrorBoundaryCut(ref_patches,selected_patch,overlap_size,'vertical',patch_size);
 			
 			modified_pic(1:patch_size,start_ind+1:start_ind+patch_size,:) = final_patch;
 
 		elseif j==1
-			start_ind = net_patch_size + (i-2)*net_patch_size;
+			Q = ones(overlap_size, patch_size);
+            Q_ext = padarray(Q, [h-overlap_size w-patch_size], 'post');
+            Q_ext_corr = xcorr2(Q_ext, Io_2);
+            Q_ext_corr=Q_ext_corr(end:-1:1,end:-1:1);
+            Q_ext_corr = Q_ext_corr(h:end, w:end);
+            start_ind = net_patch_size + (i-2)*net_patch_size;
 			prev_patch = modified_pic(start_ind - net_patch_size + 1:start_ind - net_patch_size + patch_size,1:patch_size,:);
 			
 			ref_patches = cell(1,3);
 			ref_patches{2} = prev_patch;
 			
-			selected_patch = findClosestPatch(ref_patches, original_pic, error_tolerance, 'horizontal', overlap_size, patch_size);
+			selected_patch = findClosestPatch(ref_patches, original_pic, error_tolerance, 'horizontal', overlap_size, patch_size, Io_fft, Q_ext_corr);
 			final_patch = minErrorBoundaryCut(ref_patches,selected_patch,overlap_size,'horizontal',patch_size);
 			
 			modified_pic(start_ind+1:start_ind+patch_size,1:patch_size,:) = final_patch;
 
-		else
-			left_ind = net_patch_size + (j-2)*net_patch_size;
+        else
+            Q_ext = zeros(h,w);
+            left_ind = net_patch_size + (j-2)*net_patch_size;
 			top_ind = net_patch_size + (i-2)*net_patch_size;
 			
 			left_patch = modified_pic(top_ind + 1 : top_ind + patch_size,left_ind - net_patch_size + 1:left_ind - net_patch_size + patch_size,:);
 			top_patch = modified_pic(top_ind - net_patch_size + 1:top_ind - net_patch_size + patch_size,left_ind + 1:left_ind + patch_size,:);
 			corner_patch = modified_pic(top_ind - net_patch_size + 1:top_ind - net_patch_size + patch_size,left_ind - net_patch_size + 1:left_ind - net_patch_size + patch_size,:);
 			
-			ref_patches = cell(1,3);
+            Q_ext(1:patch_size, 1:overlap_size) = ones(patch_size, overlap_size);
+            Q_ext(1:overlap_size, 1:patch_size) = ones(overlap_size,patch_size);
+            Q_ext_corr = xcorr2(Q_ext, Io_2);
+            Q_ext_corr=Q_ext_corr(end:-1:1,end:-1:1);
+            Q_ext_corr = Q_ext_corr(h:end, w:end);
+			
+            ref_patches = cell(1,3);
 			ref_patches{1} = left_patch;
 			ref_patches{2} = top_patch;
 			ref_patches{3} = corner_patch;
 
-			selected_patch = findClosestPatch(ref_patches, original_pic, error_tolerance, 'both', overlap_size, patch_size);
+			selected_patch = findClosestPatch(ref_patches, original_pic, error_tolerance, 'both', overlap_size, patch_size, Io_fft, Q_ext_corr);
 			final_patch = minErrorBoundaryCut(ref_patches,selected_patch,overlap_size,'both',patch_size);
 
 			modified_pic(top_ind+1:top_ind+patch_size,left_ind+1:left_ind+patch_size,:) = final_patch;
