@@ -1,10 +1,10 @@
 %% Helper function to return a random patch of the closest patch to the given patch in the original image
-function selected_patch = findClosestPatch(ref_patches,original_pic,error_tolerance,overlap_type,overlap_size,patch_size, Io_fft, Q_ext_corr);
-	[h,w,num_chan] = size(original_pic);
+function selected_patch = findClosestPatch(ref_patches,original_pic,error_tolerance,overlap_type,overlap_size,patch_size, Io_fft, Q_ext_corr)
+	[h,w,~] = size(original_pic);
 	num_rows = h-patch_size+1;
 	num_cols = w-patch_size+1;
-	error_patch = zeros([num_rows,num_cols]);
-	min_error = 10000000.0;
+% 	error_patch = zeros([num_rows,num_cols]);
+% 	min_error = 10000000.0;
 % 	for i=1:h-patch_size+1
 % 		for j=1:w-patch_size+1
 % 			curr_patch = original_pic(i:i+patch_size-1,j:j+patch_size-1,:);
@@ -53,7 +53,7 @@ function selected_patch = findClosestPatch(ref_patches,original_pic,error_tolera
         
         
     else
-        P_old = zeros(patch_size);
+%         P_old = zeros(patch_size);
         l_patch = ref_patches{1};
 		l_patch = l_patch(:,patch_size-overlap_size+1:patch_size,:);
         P_old_v = padarray(l_patch, [0 patch_size-overlap_size], 'post');
